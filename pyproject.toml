@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fleet-driver-drowsiness"
+version = "0.1.0"
+description = "Explainable, safety-oriented driver drowsiness and sleep detection for fleet driver-facing cameras."
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{ name = "Zain Ul Abideen" }]
+license = { text = "MIT" }
+dependencies = [
+    "mediapipe>=0.10.14",   # Face Landmarker (Tasks API); also installs opencv-contrib-python
+    "numpy>=1.26",
+    "pydantic>=2.6",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[project.scripts]
+drowsiness-demo = "drowsiness.cli:demo_main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+markers = [
+    "requires_model: needs data/models/face_landmarker.task (run scripts/download_model.py)",
+]
+
+[tool.ruff]
+line-length = 140
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+ignore = ["UP042"]  # str-mixin enums keep json/str behaviour stable

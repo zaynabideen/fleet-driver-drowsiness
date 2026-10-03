@@ -1,0 +1,8 @@
+# Runtime
+mediapipe>=0.10.14      # pulls in opencv-contrib-python; do NOT also install opencv-python (they conflict)
+numpy>=1.26
+pydantic>=2.6
+pyyaml>=6.0
+
+# Development
+pytest>=8.0

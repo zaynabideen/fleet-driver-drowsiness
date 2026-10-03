@@ -1,0 +1,20 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+build/
+dist/
+
+# Model weights are downloaded, not committed
+data/models/*.task
+
+# Runtime output: never commit driver data
+logs/*
+!logs/.gitkeep
+data/recordings/
+data/snapshots/
+data/videos/
+*.mp4
+*.avi
