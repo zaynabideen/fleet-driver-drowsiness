@@ -35,7 +35,13 @@ def _parse(argv: list[str] | None) -> argparse.Namespace:
                    help="OPT-IN: write the annotated video to this path (contains the driver's face)")
     p.add_argument("--no-mirror", action="store_true", help="do not mirror the webcam image")
     p.add_argument("--no-landmarks", action="store_true", help="hide eye/mouth landmark dots")
-    return p.parse_args(argv)
+    p.add_argument("--guided-demo", action="store_true",
+                   help="show on-screen prompts for each behaviour, record to demo.mp4 (unless "
+                        "--save-annotated is given) and stop automatically when the script ends")
+    args = p.parse_args(argv)
+    if args.guided_demo and not args.save_annotated:
+        args.save_annotated = "demo.mp4"
+    return args
 
 
 def _settings(args: argparse.Namespace) -> Settings:
@@ -53,7 +59,8 @@ def demo_main(argv: list[str] | None = None) -> int:
 
     from drowsiness.detection.landmark_detector import MediaPipeFaceLandmarker, ModelNotFoundError
     from drowsiness.pipeline.driver_monitor import DriverMonitor
-    from drowsiness.presentation.overlay import render
+    from drowsiness.presentation.guided_demo import GuidedDemo, draw_prompt
+    from drowsiness.presentation.overlay import PANEL_W, render
     from drowsiness.sources.frame_sources import VideoFileSource, WebcamSource
 
     args = _parse(argv)
@@ -79,6 +86,7 @@ def demo_main(argv: list[str] | None = None) -> int:
         Path(args.timeline).parent.mkdir(parents=True, exist_ok=True)
         timeline = open(args.timeline, "w", encoding="utf-8")
     writer = None
+    guide = GuidedDemo() if args.guided_demo else None
     fps_est, last = None, time.perf_counter()
     log.info("Monitoring started (source=%s). Calibrating for ~%.0fs: look at the road normally.",
              args.source, settings.calibration.duration_s)
@@ -106,6 +114,11 @@ def demo_main(argv: list[str] | None = None) -> int:
             fps_est = inst if fps_est is None else 0.9 * fps_est + 0.1 * inst
             canvas = render(frame.image, out, monitor.alerts.recent_alerts, fps_est,
                             monitor.analyzer.baseline.progress, show_landmarks=not args.no_landmarks)
+            finished = False
+            if guide is not None:
+                prompt, expect, left, finished = guide.update(time.perf_counter(),
+                                                              monitor.analyzer.baseline.calibrated)
+                draw_prompt(canvas, canvas.shape[1] - PANEL_W, prompt, expect, left)
             if args.save_annotated:
                 if writer is None:
                     writer = cv2.VideoWriter(args.save_annotated, cv2.VideoWriter_fourcc(*"mp4v"), RECORD_FPS,
@@ -119,7 +132,7 @@ def demo_main(argv: list[str] | None = None) -> int:
                     written += 1
             cv2.imshow("Driver Monitoring", canvas)
             key = cv2.waitKey(1) & 0xFF
-            if key in (ord("q"), 27):
+            if key in (ord("q"), 27) or finished:
                 break
     finally:
         source.close()
@@ -131,6 +144,8 @@ def demo_main(argv: list[str] | None = None) -> int:
         if not args.headless:
             cv2.destroyAllWindows()
     log.info("Stopped. Events written to %s/events.jsonl", log_dir)
+    if args.save_annotated:
+        log.info("Video saved to %s", Path(args.save_annotated).resolve())
     return 0
 
 

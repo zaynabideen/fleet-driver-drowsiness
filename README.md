@@ -236,6 +236,7 @@ Options:
 
 | Flag | Effect |
 |---|---|
+| `--guided-demo` | On-screen prompts walk you through each behaviour; records `demo.mp4` in real time and stops by itself. |
 | `--headless --timeline out.jsonl` | Process a video without a window and write a per-frame state timeline for evaluation. |
 | `--record-features` | Write `logs/features.jsonl` (numbers only, no pixels) for replay. |
 | `--save-snapshots` | Opt-in: save a small still on HIGH/CRITICAL alerts. |
