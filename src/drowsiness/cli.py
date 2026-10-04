@@ -18,6 +18,8 @@ from drowsiness.events.event_log import configure_logging
 
 log = logging.getLogger("drowsiness.cli")
 
+RECORD_FPS = 20
+
 
 def _parse(argv: list[str] | None) -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Fleet driver drowsiness monitor")
@@ -106,9 +108,15 @@ def demo_main(argv: list[str] | None = None) -> int:
                             monitor.analyzer.baseline.progress, show_landmarks=not args.no_landmarks)
             if args.save_annotated:
                 if writer is None:
-                    writer = cv2.VideoWriter(args.save_annotated, cv2.VideoWriter_fourcc(*"mp4v"), 20,
+                    writer = cv2.VideoWriter(args.save_annotated, cv2.VideoWriter_fourcc(*"mp4v"), RECORD_FPS,
                                              (canvas.shape[1], canvas.shape[0]))
-                writer.write(canvas)
+                    rec_start, written = time.perf_counter(), 0
+                # Pace by wall-clock time so the recording plays back in real time even if
+                # processing runs faster or slower than RECORD_FPS (a 3 s eye closure stays 3 s).
+                target = int((time.perf_counter() - rec_start) * RECORD_FPS) + 1
+                while written < target:
+                    writer.write(canvas)
+                    written += 1
             cv2.imshow("Driver Monitoring", canvas)
             key = cv2.waitKey(1) & 0xFF
             if key in (ord("q"), 27):
