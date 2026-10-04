@@ -50,7 +50,7 @@ class TemporalAnalyzer:
         rel_pitch = rel_yaw = None
         if f.face_present and f.pitch_deg is not None and f.yaw_deg is not None:
             n_pitch, n_yaw, _ = self.baseline.neutral_pose
-            rel_pitch, rel_yaw = f.pitch_deg - n_pitch, f.yaw_deg - n_yaw
+            rel_pitch, rel_yaw = float(f.pitch_deg - n_pitch), float(f.yaw_deg - n_yaw)
         head = self._head.update(t, rel_pitch, rel_yaw, eye.state)
 
         # --- observation gaps -------------------------------------------------

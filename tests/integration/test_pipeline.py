@@ -94,3 +94,29 @@ def test_overlay_renders_every_state():
             canvas = render(img, o, [], 30.0, 0.5)
             assert canvas.shape == (480, 640 + 360, 3)
     assert {DriverState.MONITORING, DriverState.CRITICAL_SLEEP_RISK, DriverState.UNKNOWN} <= seen
+
+
+def test_state_change_during_calibration_is_logged_without_crashing(tmp_path):
+    """Regression: on a real webcam the face often appears ~1 s after start (camera warm-up).
+    The UNKNOWN -> MONITORING change happens before calibration ends, when the neutral pose
+    was still a NumPy value, and writing that event to JSON crashed the app."""
+    from drowsiness.simulation.streams import StreamBuilder
+
+    mon = DriverMonitor(load_settings(), alert_sinks=[], log_dir=tmp_path)
+    for f in StreamBuilder().no_face(1.5).alert(3, pitch=5.0).segment(1.2, pitch=5.0, pitch_to=30.0).frames:
+        mon.process_features(f)
+    mon.close()
+    events = [json.loads(line) for line in (tmp_path / "events.jsonl").read_text().splitlines()]
+    changes = [e for e in events if e["event_type"] == "state_change"]
+    assert [e["driver_state"] for e in changes[:2]] == ["UNKNOWN", "MONITORING"]
+    head = changes[1]["signals"]
+    assert isinstance(head["head_nod"], bool) and isinstance(head["head_pitch_deg"], float)
+
+
+def test_event_writer_never_crashes_on_numpy_values(tmp_path):
+    from drowsiness.events.event_log import JsonlWriter
+
+    w = JsonlWriter(tmp_path / "x.jsonl")
+    w.write({"a": np.bool_(True), "b": np.float64(1.5), "c": np.int64(3), "d": np.zeros(2)})
+    w.close()
+    assert json.loads((tmp_path / "x.jsonl").read_text()) == {"a": True, "b": 1.5, "c": 3, "d": [0.0, 0.0]}

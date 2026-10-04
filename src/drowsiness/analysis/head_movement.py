@@ -66,11 +66,11 @@ class HeadMovementAnalyzer:
         dropping = down and last_nod is not None and t - last_nod <= self._s.impaired_lookback_s
         away = rel_yaw is not None and abs(rel_yaw) >= self._s.away_yaw_deg
         return HeadMetrics(
-            head_down_s=0.0 if self._impaired_down_since is None else t - self._impaired_down_since,
-            eyes_off_road_s=0.0 if self._off_road_since is None else t - self._off_road_since,
+            head_down_s=0.0 if self._impaired_down_since is None else float(t - self._impaired_down_since),
+            eyes_off_road_s=0.0 if self._off_road_since is None else float(t - self._off_road_since),
             nods=len(self._nods),
-            head_dropping=dropping,
-            looking_away=away,
+            head_dropping=bool(dropping),
+            looking_away=bool(away),
             last_nod_s=last_nod,
         )
 

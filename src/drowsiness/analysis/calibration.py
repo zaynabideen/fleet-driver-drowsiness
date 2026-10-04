@@ -25,6 +25,12 @@ from drowsiness.schemas.detection import FrameFeatures
 _GOOD_QUALITY = 0.6
 
 
+def _median_pose(poses: list[tuple[float, float, float]]) -> tuple[float, float, float]:
+    """Median pose as plain Python floats (NumPy scalars must not leak into logs/JSON)."""
+    p, y, r = (float(v) for v in np.median(np.array(poses), axis=0))
+    return p, y, r
+
+
 class DriverBaseline:
     def __init__(self, settings: CalibrationSettings) -> None:
         self._s = settings
@@ -80,7 +86,7 @@ class DriverBaseline:
         if f.pitch_deg is not None and f.yaw_deg is not None and f.roll_deg is not None:
             self._poses.append((f.pitch_deg, f.yaw_deg, f.roll_deg))
             # Provisional neutral pose so relative angles are sensible during calibration.
-            self._neutral = tuple(np.median(np.array(self._poses), axis=0))  # type: ignore[assignment]
+            self._neutral = _median_pose(self._poses)
         if not f.quality.eyes_observable or f.ear is None:
             return
         if self._start_s is None:
@@ -95,7 +101,7 @@ class DriverBaseline:
         ear = float(np.percentile(self._ears, self._s.ear_percentile))
         self._open_ear = float(np.clip(ear, self._s.min_open_ear, self._s.max_open_ear))
         if self._poses:
-            self._neutral = tuple(float(v) for v in np.median(np.array(self._poses), axis=0))  # type: ignore[assignment]
+            self._neutral = _median_pose(self._poses)
         self._calibrated = True
         self._ears.clear()
         self._poses.clear()

@@ -38,7 +38,7 @@ class JsonFormatter(logging.Formatter):
         }
         if isinstance(getattr(record, "event", None), dict):
             payload["event"] = record.event  # type: ignore[attr-defined]
-        return json.dumps(payload)
+        return json.dumps(payload, default=_json_default)
 
 
 def configure_logging(directory: str | Path = "logs", console_level: str = "INFO") -> None:
@@ -142,6 +142,15 @@ def format_decision(d: StateDecision, origin_wall: datetime | None = None) -> st
     return "\n".join(lines)
 
 
+def _json_default(obj: Any) -> Any:
+    """Last line of defence: a logging call must never crash the monitor."""
+    if isinstance(obj, np.generic):
+        return obj.item()
+    if isinstance(obj, np.ndarray):
+        return obj.tolist()
+    return str(obj)
+
+
 class JsonlWriter:
     def __init__(self, path: str | Path) -> None:
         self.path = Path(path)
@@ -149,7 +158,7 @@ class JsonlWriter:
         self._fh: IO[str] = open(self.path, "a", encoding="utf-8")
 
     def write(self, obj: dict[str, Any]) -> None:
-        self._fh.write(json.dumps(obj) + "\n")
+        self._fh.write(json.dumps(obj, default=_json_default) + "\n")
         self._fh.flush()
 
     def close(self) -> None:
