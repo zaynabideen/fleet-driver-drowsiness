@@ -15,9 +15,10 @@ Drowsiness ladder:  ALERT -> DROWSINESS_WARNING -> HIGH_DROWSINESS_RISK -> CRITI
   * Escalation: the target level must persist for escalate_confirm_s[target]
     (temporal confirmation). Levels can be skipped - a microsleep goes
     straight to CRITICAL.
-  * De-escalation: lower risk must persist for deescalate_hold_s[current],
-    then the state steps down ONE level and the timer restarts (hysteresis +
-    cooldown). Fast to escalate, slow to recover.
+  * De-escalation: lower risk must persist for deescalate_hold_s[current]
+    (hysteresis), then the state drops to the level the evidence supports.
+    Old history only stops supporting a level once the driver has been
+    observed alert for history_relevance_s, so recovery needs real evidence.
   * ALERT is only reported when the driver is actually observed, calibrated,
     and low risk has been seen for recovery_confirm_s. Otherwise MONITORING.
 """
@@ -27,7 +28,7 @@ from __future__ import annotations
 from drowsiness.config.settings import Settings
 from drowsiness.schemas.analysis import BehaviourSnapshot
 from drowsiness.schemas.events import RiskAssessment, StateDecision
-from drowsiness.schemas.states import ELEVATED_LADDER, DriverState, ObservationStatus, RiskLevel
+from drowsiness.schemas.states import DriverState, ObservationStatus, RiskLevel
 
 
 class SafetyStateMachine:
@@ -98,13 +99,15 @@ class SafetyStateMachine:
                 self._lower_since = t
             hold = sm.deescalate_hold_s.get(self.state.value, 0.0)
             if t - self._lower_since >= hold:
-                self._lower_since = t  # each further step needs its own hold period
-                step_down = ELEVATED_LADDER[current_rank - 1]
+                self._lower_since = t
+                # Drop to the level the evidence now supports (not one rung at a time): the hold,
+                # plus history_relevance_s in the risk engine, already demands sustained recovery.
+                step_down = target
                 if step_down == DriverState.ALERT:
                     step_down = DriverState.MONITORING
                     self._low_since = t
                 return self._go(t, step_down, risk.confidence, risk,
-                                f"risk below {self.state.value} for {hold:.0f}s - stepping down")
+                                f"risk below {self.state.value} for {hold:.0f}s - recovering")
             return self._stay(t, risk, f"recovering: lower risk for {t - self._lower_since:.1f}/{hold:.0f}s",
                               recovery=min(1.0, (t - self._lower_since) / hold) if hold > 0 else 1.0)
 

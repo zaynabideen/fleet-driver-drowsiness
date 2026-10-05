@@ -175,7 +175,7 @@ class RuleBasedRiskEngine:
                               s: BehaviourSnapshot) -> list[tuple[Evidence, float]]:
         """Once the driver has been observed alert for history_relevance_s, history evidence is
         still reported but no longer sets the level. A new impairment sign makes it count again."""
-        if s.observed_alert_s < self._r.history_relevance_s:
+        if not s.history_cleared and s.observed_alert_s < self._r.history_relevance_s:
             return scored
         out = []
         for e, g in scored:

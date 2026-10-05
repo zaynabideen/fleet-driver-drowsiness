@@ -161,16 +161,27 @@ class BlinkSettings(_Section):
 
 class MouthSettings(_Section):
     yawn_mar: float = Field(
-        0.5,
-        description="Inner-lip MAR above this = wide mouth opening. Speech rarely exceeds ~0.4.",
+        0.4,
+        description="Inner-lip MAR above this = wide mouth opening. Normal speech stays below ~0.35; 0.5 missed "
+        "moderate real yawns in testing.",
     )
-    yawn_blendshape: float = Field(0.6, description="jawOpen blendshape score that independently indicates a wide opening.")
+    yawn_blendshape: float = Field(0.45, description="jawOpen blendshape score that independently indicates a wide opening.")
     min_yawn_s: float = Field(
-        2.0,
+        1.5,
         description="A wide opening must last this long to be a yawn. Talking and laughing produce "
-        "short openings; yawns typically last several seconds.",
+        "short openings (< ~1 s); yawns typically last several seconds.",
     )
-    merge_gap_s: float = Field(0.4, description="Openings separated by less than this are merged into one episode.")
+    max_yawn_s: float = Field(
+        6.0,
+        description="Eyes often close during a yawn, so eye closure is not counted as drowsiness evidence while "
+        "a yawn is in progress - but only for this long. A mouth hanging open for longer (e.g. asleep with "
+        "the head back) gets no such exemption.",
+    )
+    merge_gap_s: float = Field(
+        0.25,
+        description="Openings separated by less than this are merged into one episode (short enough that the "
+        "pauses between spoken syllables do not merge talking into a 'yawn').",
+    )
     window_s: float = Field(300.0, gt=0, description="Rolling window for yawn frequency (5 minutes).")
 
 
@@ -255,7 +266,7 @@ class RiskSettings(_Section):
         (30.0, 1e9, 1e9), description="Blinks per minute. Excess blinking alone never exceeds severity 1."
     )
     history_relevance_s: float = Field(
-        8.0,
+        5.0,
         gt=0,
         description="Window-based (history) evidence - PERCLOS, counts of long closures, slow blinks, nods, yawns, "
         "blink rate - keeps raising risk only until the driver has been OBSERVED alert (eyes visibly open, head "
@@ -286,15 +297,16 @@ class StateMachineSettings(_Section):
     )
     deescalate_hold_s: dict[str, float] = Field(
         default_factory=lambda: {
-            "CRITICAL_SLEEP_RISK": 4.0,
-            "HIGH_DROWSINESS_RISK": 6.0,
-            "DROWSINESS_WARNING": 6.0,
+            "CRITICAL_SLEEP_RISK": 3.0,
+            "HIGH_DROWSINESS_RISK": 3.0,
+            "DROWSINESS_WARNING": 3.0,
         },
-        description="Lower risk must persist this long before stepping down ONE level from the given state. "
-        "Fast to escalate, slow to recover.",
+        description="Lower risk must persist this long (confirmation) before the state drops to the level the "
+        "evidence now supports. Combined with history_relevance_s, a driver seen alert for ~5 s returns "
+        "to normal ~3-4 s later. Escalation stays immediate/near-immediate.",
     )
     recovery_confirm_s: float = Field(
-        2.0,
+        1.0,
         description="After UNKNOWN / CAMERA_UNAVAILABLE / MONITORING, low risk must be observed this long "
         "before reporting ALERT.",
     )

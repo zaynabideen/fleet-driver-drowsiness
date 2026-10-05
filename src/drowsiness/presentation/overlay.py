@@ -133,7 +133,12 @@ def render(
     perclos = "--" if s.perclos is None else f"{s.perclos:.0%}"
     y = _row(panel, y, "Blink rate", f"{rate}   PERCLOS {perclos}")
     y = _row(panel, y, "Slow / long", f"{s.slow_blinks} / {s.long_closures} (60s)")
-    yawn = "YES" if s.yawning_now else "NO"
+    if s.yawning_now:
+        yawn = f"YES {s.current_mouth_open_s:.1f}s"
+    elif s.current_mouth_open_s > 0:
+        yawn = f"opening {s.current_mouth_open_s:.1f}s"
+    else:
+        yawn = "NO"
     y = _row(panel, y, "Yawn", f"{yawn}   ({s.yawns} in 5 min)")
     if s.rel_pitch_deg is None:
         head = "--"

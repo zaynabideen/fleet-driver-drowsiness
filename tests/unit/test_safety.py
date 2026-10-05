@@ -194,22 +194,25 @@ def test_critical_is_immediate_and_can_skip_levels():
     assert d[-1].previous_state == DriverState.ALERT
 
 
-def test_deescalation_is_stepwise_and_slow():
+def test_deescalation_needs_sustained_lower_risk_then_drops_to_supported_level():
     hold = S.state_machine.deescalate_hold_s
     sm = SafetyStateMachine(S)
     drive(sm, [(3, {}), (0.1, {"current_closure_s": 3.2})])
     assert sm.state == DriverState.CRITICAL_SLEEP_RISK
     d = drive(sm, [(hold["CRITICAL_SLEEP_RISK"] - 0.5, {})])
-    assert d[-1].state == DriverState.CRITICAL_SLEEP_RISK  # hold not yet met
-    assert 0 < d[-1].recovery_progress < 1                 # progress shown while recovering
+    assert d[-1].state == DriverState.CRITICAL_SLEEP_RISK   # confirmation not yet met
+    assert 0 < d[-1].recovery_progress < 1                  # progress shown while recovering
     d = drive(sm, [(1.0, {})])
-    assert d[-1].state == DriverState.HIGH_DROWSINESS_RISK  # one step only
-    d = drive(sm, [(hold["HIGH_DROWSINESS_RISK"] + 0.5, {})])
-    assert d[-1].state == DriverState.DROWSINESS_WARNING
-    d = drive(sm, [(hold["DROWSINESS_WARNING"] + 0.5, {})])
-    assert d[-1].state == DriverState.MONITORING
-    d = drive(sm, [(S.state_machine.recovery_confirm_s + 0.5, {})])
+    assert d[-1].state == DriverState.MONITORING            # evidence supports LOW: no rung-by-rung crawl
+    d = drive(sm, [(S.state_machine.recovery_confirm_s + 0.2, {})])
     assert d[-1].state == DriverState.ALERT
+
+
+def test_partial_recovery_stops_at_the_level_still_supported():
+    sm = SafetyStateMachine(S)
+    drive(sm, [(3, {}), (0.1, {"current_closure_s": 3.2})])
+    d = drive(sm, [(S.state_machine.deescalate_hold_s["CRITICAL_SLEEP_RISK"] + 0.5, {"perclos": 0.18})])
+    assert d[-1].state == DriverState.DROWSINESS_WARNING
 
 
 def test_hysteresis_no_flapping_with_oscillating_risk():

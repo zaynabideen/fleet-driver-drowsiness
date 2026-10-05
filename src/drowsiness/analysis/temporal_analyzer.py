@@ -38,6 +38,7 @@ class TemporalAnalyzer:
         self._unobserved_since: float | None = None
         self._lost_while_impaired = False
         self._alert_since: float | None = None
+        self._history_cleared = False
         self.last_eye: EyeObservation | None = None
 
     def update(self, f: FrameFeatures) -> BehaviourSnapshot:
@@ -45,8 +46,9 @@ class TemporalAnalyzer:
         self.baseline.update(f)
         eye = self._eyes.classify(f, self.baseline)
         self.last_eye = eye
-        blink = self._blinks.update(t, eye.state)
         yawn = self._yawns.update(f)
+        in_yawn = 0.0 < yawn.current_open_s <= self._s.mouth.max_yawn_s
+        blink = self._blinks.update(t, eye.state, suppress=in_yawn and eye.state == EyeState.CLOSED)
 
         rel_pitch = rel_yaw = None
         if f.face_present and f.pitch_deg is not None and f.yaw_deg is not None:
@@ -78,6 +80,13 @@ class TemporalAnalyzer:
         elif self._alert_since is None:
             self._alert_since = t
         observed_alert_s = 0.0 if self._alert_since is None else t - self._alert_since
+        # Once the driver has been seen alert long enough, old history is retired. Only a NEW sign of
+        # drowsiness revives it - merely losing sight of the driver (hand, turning away) does not.
+        new_sign = impaired_now or yawn.yawning_now or head.last_nod_s == t or rapid_blinking
+        if new_sign:
+            self._history_cleared = False
+        elif observed_alert_s >= self._s.risk.history_relevance_s:
+            self._history_cleared = True
 
         if not f.camera_ok:
             status = ObservationStatus.CAMERA_UNAVAILABLE
@@ -125,6 +134,7 @@ class TemporalAnalyzer:
             camera_unavailable_s=0.0 if self._camera_down_since is None else t - self._camera_down_since,
             camera_issue=f.camera_issue,
             observed_alert_s=observed_alert_s,
+            history_cleared=self._history_cleared,
         )
 
     def _track_unobserved_after_impairment(self, t: float, eye_state: EyeState) -> None:

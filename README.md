@@ -9,7 +9,7 @@ An explainable, safety-oriented driver monitoring system for driver-facing fleet
 ALERT · MONITORING · DROWSINESS_WARNING · HIGH_DROWSINESS_RISK · CRITICAL_SLEEP_RISK · UNKNOWN · CAMERA_UNAVAILABLE
 ```
 
-**Status:** 164 tests pass (unit, scenario and pipeline integration), plus 2 that run once the MediaPipe model is downloaded. **No real-world accuracy is claimed.** The evaluation framework is built; numbers need labelled video ([docs/EVALUATION.md](docs/EVALUATION.md)).
+**Status:** 172 tests pass (unit, scenario and pipeline integration), plus 2 that run once the MediaPipe model is downloaded. **No real-world accuracy is claimed.** The evaluation framework is built; numbers need labelled video ([docs/EVALUATION.md](docs/EVALUATION.md)).
 
 ---
 
@@ -142,7 +142,7 @@ EAR = (|p2 − p6| + |p3 − p5|) / (2 · |p1 − p4|)
 
 **PERCLOS** is the fraction of *observed* time with eyes closed over 60 s. It is withheld when the eyes were observable for less than 60% of the window.
 
-**Mouth: inner-lip MAR** = mean of three vertical lip gaps ÷ mouth width. A yawn is MAR ≥ 0.5 (or `jawOpen` ≥ 0.6) sustained for ≥ 2 s. Talking and laughing are shorter and narrower.
+**Mouth: inner-lip MAR** = mean of three vertical lip gaps ÷ mouth width. A yawn is MAR ≥ 0.4 (or `jawOpen` ≥ 0.45) sustained for ≥ 1.5 s. Talking and laughing are shorter and narrower. Eyes often close during a yawn, so that closure is not counted as drowsy eye closure — for at most 6 s, so a mouth hanging open while asleep can't hide a microsleep.
 
 **Head**
 
@@ -193,8 +193,8 @@ Rules of thumb built into the engine:
 | Behaviour | Rule |
 |---|---|
 | Escalation | Target level must persist: WARNING 0.5 s, HIGH 0.3 s, CRITICAL immediate (its rule already contains seconds of evidence). Levels can be skipped. |
-| De-escalation | Lower risk must persist for 4 s (from CRITICAL) or 6 s (HIGH, WARNING). Then the state steps down **one** level and the timer restarts. The panel shows recovery progress. |
-| History vs. now | Window evidence (PERCLOS, closure/nod/yawn counts) escalates, but stops holding an alarm once the driver has been **observed** alert for 8 s; any new sign re-activates it. Time with eyes unobservable never counts as recovery. |
+| De-escalation | Lower risk must persist for 3 s, then the state drops to the level the evidence still supports (via MONITORING before ALERT). Typical recovery: ~4 s after a single closure, ~8–10 s after repeated episodes. The panel shows recovery progress. |
+| History vs. now | Window evidence (PERCLOS, closure/nod/yawn counts) escalates, but stops holding an alarm once the driver has been **observed** alert for 5 s; only a new drowsiness sign re-activates it (briefly losing sight of the driver does not). Time with eyes unobservable never counts as recovery. |
 | ALERT | Only when calibrated, eyes observed, and low risk confirmed for 2 s. Otherwise MONITORING. |
 | Face lost < 1 s | Hold state; confidence decays. |
 | Face lost ≥ 1 s | `UNKNOWN` (never ALERT). |
@@ -248,7 +248,7 @@ Options:
 ## 12. Testing
 
 ```bash
-pytest                                     # 164 tests, ~15 s, no camera or model needed
+pytest                                     # 172 tests, ~15 s, no camera or model needed
 python scripts/run_synthetic_scenarios.py  # readable table of scenario outcomes
 ```
 

@@ -69,13 +69,17 @@ class BlinkAnalyzer:
     def episodes(self) -> tuple[ClosureEpisode, ...]:
         return tuple(self._episodes)
 
-    def update(self, t: float, state: EyeState) -> BlinkMetrics:
+    def update(self, t: float, state: EyeState, suppress: bool = False) -> BlinkMetrics:
+        """``suppress``: eyes closed as part of a yawn - not counted as a closure, nor in PERCLOS."""
         if self._first_t is None:
             self._first_t = t
         dt = 0.0 if self._prev_t is None else min(max(t - self._prev_t, 0.0), MAX_SAMPLE_DT_S)
         self._prev_t = t
 
-        if state == EyeState.CLOSED:
+        if suppress:
+            self._episode_start = None
+            self._last_closed_s = None
+        elif state == EyeState.CLOSED:
             if self._episode_start is None:
                 self._episode_start = t
             self._last_closed_s = t

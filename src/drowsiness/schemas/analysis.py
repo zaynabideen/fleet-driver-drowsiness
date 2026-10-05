@@ -55,6 +55,7 @@ class BehaviourSnapshot:
     # How long the driver has been continuously OBSERVED alert (eyes visibly open, no impairment sign).
     # Used to retire stale history evidence; unobservable time never counts.
     observed_alert_s: float = 0.0
+    history_cleared: bool = False  # driver was seen alert long enough since the last drowsiness sign
 
     def to_dict(self) -> dict[str, Any]:
         data = asdict(self)

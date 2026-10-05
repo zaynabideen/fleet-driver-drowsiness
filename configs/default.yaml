@@ -83,15 +83,21 @@ blink:
   excessive_rate_per_min: 30.0
 
 mouth:
-  # Inner-lip MAR above this = wide mouth opening. Speech rarely exceeds ~0.4.
-  yawn_mar: 0.5
+  # Inner-lip MAR above this = wide mouth opening. Normal speech stays below ~0.35; 0.5 missed
+  # moderate real yawns in testing.
+  yawn_mar: 0.4
   # jawOpen blendshape score that independently indicates a wide opening.
-  yawn_blendshape: 0.6
-  # A wide opening must last this long to be a yawn. Talking and laughing produce short openings;
-  # yawns typically last several seconds.
-  min_yawn_s: 2.0
-  # Openings separated by less than this are merged into one episode.
-  merge_gap_s: 0.4
+  yawn_blendshape: 0.45
+  # A wide opening must last this long to be a yawn. Talking and laughing produce short openings (<
+  # ~1 s); yawns typically last several seconds.
+  min_yawn_s: 1.5
+  # Eyes often close during a yawn, so eye closure is not counted as drowsiness evidence while a
+  # yawn is in progress - but only for this long. A mouth hanging open for longer (e.g. asleep with
+  # the head back) gets no such exemption.
+  max_yawn_s: 6.0
+  # Openings separated by less than this are merged into one episode (short enough that the pauses
+  # between spoken syllables do not merge talking into a 'yawn').
+  merge_gap_s: 0.25
   # Rolling window for yawn frequency (5 minutes).
   window_s: 300.0
 
@@ -149,7 +155,7 @@ risk:
   # after the driver recovered, and two yawns held WARNING for ~5 min. History still counts as soon
   # as a new sign appears, so repeated episodes still escalate. Time the eyes are unobservable never
   # counts as alert.
-  history_relevance_s: 8.0
+  history_relevance_s: 5.0
   # Eye closure of at least this long *combined with* the head down/dropping is CRITICAL.
   critical_combo_closure_s: 2.0
   # Three independent signal categories (eyes, head, mouth/blink) all at severity >= 1 also make
@@ -163,15 +169,16 @@ state_machine:
     DROWSINESS_WARNING: 0.5
     HIGH_DROWSINESS_RISK: 0.3
     CRITICAL_SLEEP_RISK: 0.0
-  # Lower risk must persist this long before stepping down ONE level from the given state. Fast to
-  # escalate, slow to recover.
+  # Lower risk must persist this long (confirmation) before the state drops to the level the
+  # evidence now supports. Combined with history_relevance_s, a driver seen alert for ~5 s returns
+  # to normal ~3-4 s later. Escalation stays immediate/near-immediate.
   deescalate_hold_s:
-    CRITICAL_SLEEP_RISK: 4.0
-    HIGH_DROWSINESS_RISK: 6.0
-    DROWSINESS_WARNING: 6.0
+    CRITICAL_SLEEP_RISK: 3.0
+    HIGH_DROWSINESS_RISK: 3.0
+    DROWSINESS_WARNING: 3.0
   # After UNKNOWN / CAMERA_UNAVAILABLE / MONITORING, low risk must be observed this long before
   # reporting ALERT.
-  recovery_confirm_s: 2.0
+  recovery_confirm_s: 1.0
 
 alerts:
   # Minimum seconds between repeat alerts of the same type. An escalation to a more severe type
