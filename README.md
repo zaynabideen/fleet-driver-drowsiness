@@ -219,7 +219,8 @@ python scripts/download_model.py                        # MediaPipe face landmar
 ## 11. Running the demo
 
 ```bash
-python demo/webcam_demo.py                       # webcam 0
+python -m drowsiness                             # live monitoring on webcam 0
+python demo/webcam_demo.py                       # same thing, as a script
 python demo/webcam_demo.py --source drive.mp4    # recorded video
 python demo/webcam_demo.py --help                # all options
 ```
