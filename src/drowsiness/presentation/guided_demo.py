@@ -24,7 +24,7 @@ STEPS: tuple[DemoStep, ...] = (
     DemoStep("Blink normally", 5, "Stays ALERT"),
     DemoStep("Look down at your desk - eyes OPEN", 4, "A glance is not drowsiness"),
     DemoStep("Sit up, look at the screen", 3, ""),
-    DemoStep("Yawn once, slowly", 7, "Yawn detected - still not critical"),
+    DemoStep("Yawn - keep your mouth open 3+ seconds", 8, "Yawn >= 3 s -> WARNING (not critical)"),
     DemoStep("Close your eyes for 2 seconds", 5, "Prolonged closure -> WARNING"),
     DemoStep("Open your eyes, sit normally", 4, ""),
     DemoStep("Close your eyes AND drop your head", 6, "Closure + head drop -> CRITICAL"),

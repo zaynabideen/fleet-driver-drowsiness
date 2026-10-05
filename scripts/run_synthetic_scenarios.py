@@ -42,7 +42,7 @@ def scenarios() -> list[tuple[str, str, StreamBuilder]]:
         ("5 Face disappears", "UNKNOWN", base().no_face(5)),
         ("6 Camera fails", "CAMERA_UNAVAILABLE", base().camera_down(4)),
         ("7 Brief look down", "ALERT", glance),
-        ("8 Single yawn", "ALERT", base().segment(4.0, mar=0.8).alert(10)),
+        ("8 Single yawn (3+ s)", "DROWSINESS_WARNING", base().segment(4.0, mar=0.8).alert(10)),
         ("  Microsleep, head still (3.5 s)", "CRITICAL_SLEEP_RISK", base().eyes_closed(3.5)),
         ("  Sunglasses", "MONITORING", base().segment(20, quality=SUNGLASSES)),
         ("  Talking", "ALERT", base().segment(15, mar=0.3)),

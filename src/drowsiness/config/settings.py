@@ -167,9 +167,10 @@ class MouthSettings(_Section):
     )
     yawn_blendshape: float = Field(0.45, description="jawOpen blendshape score that independently indicates a wide opening.")
     min_yawn_s: float = Field(
-        1.5,
-        description="A wide opening must last this long to be a yawn. Talking and laughing produce "
-        "short openings (< ~1 s); yawns typically last several seconds.",
+        2.5,
+        description="Mouth held wide open this long = a yawn. With the 0.5 s warning confirmation "
+        "(state_machine.escalate_confirm_s), the DROWSINESS_WARNING appears 3 s after the mouth opens. "
+        "Talking and laughing produce short openings (< ~1 s); a real yawn is held for several seconds.",
     )
     max_yawn_s: float = Field(
         6.0,
@@ -260,7 +261,9 @@ class RiskSettings(_Section):
         "is a dashboard glance (distraction), not drowsiness.",
     )
     yawns: tuple[float, float, float] = Field(
-        (2, 1e9, 1e9), description="Yawns in the yawn window. Yawning alone never exceeds severity 1."
+        (1, 1e9, 1e9),
+        description="Yawns in the yawn window. A single yawn (mouth open >= min_yawn_s) raises a "
+        "DROWSINESS_WARNING; yawning alone never goes beyond that.",
     )
     blink_rate: tuple[float, float, float] = Field(
         (30.0, 1e9, 1e9), description="Blinks per minute. Excess blinking alone never exceeds severity 1."

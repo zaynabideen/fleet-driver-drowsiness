@@ -50,6 +50,15 @@ BANNER_TEXT = {
     DriverState.CAMERA_UNAVAILABLE: "CAMERA UNAVAILABLE",
 }
 RISK_WORD = ["LOW", "MODERATE", "HIGH", "CRITICAL"]
+BANNER_REASON = {
+    "prolonged_eye_closure": "EYES CLOSED",
+    "high_perclos": "EYES CLOSING OFTEN",
+    "repeated_long_closures": "REPEATED EYE CLOSURES",
+    "head_nodding": "HEAD NODDING",
+    "downward_head_pose": "HEAD DOWN",
+    "frequent_yawning": "YAWNING",
+    "repeated_slow_blinks": "SLOW BLINKS",
+}
 
 
 def _text(img: np.ndarray, s: str, org: tuple[int, int], scale: float = 0.5, colour=TEXT, font=FONT,
@@ -102,7 +111,15 @@ def render(
         overlay = video.copy()
         cv2.rectangle(overlay, (0, 0), (video.shape[1], 46), colour, -1)
         cv2.addWeighted(overlay, 0.85, video, 0.15, 0, video)
-        _text(video, BANNER_TEXT[d.state], (16, 31), 0.75, (255, 255, 255), BOLD, 1)
+        banner = BANNER_TEXT[d.state]
+        if d.state.is_elevated and r.observable:
+            top = r.active_evidence[0].code if r.active_evidence else ""
+            reason = BANNER_REASON.get(top)
+            if s.yawning_now and d.state == DriverState.DROWSINESS_WARNING:
+                reason = "YAWNING"
+            if reason:
+                banner = f"{banner}  -  {reason}"
+        _text(video, banner, (16, 31), 0.75, (255, 255, 255), BOLD, 1)
 
     panel = np.full((VIDEO_H, PANEL_W, 3), BG, dtype=np.uint8)
     _text(panel, "DRIVER MONITORING", (18, 30), 0.6, TEXT, BOLD)

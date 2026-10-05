@@ -229,7 +229,7 @@ def test_unobservable_time_does_not_count_as_recovery():
 # ------------------------------------------------------------- yawns (regression from a real webcam run)
 
 def test_moderate_real_world_yawn_is_detected():
-    outs = run_stream(calibrated().alert(3).segment(2.5, mar=0.45).alert(3).frames)
+    outs = run_stream(calibrated().alert(3).segment(3.5, mar=0.45).alert(3).frames)
     assert any(o.snapshot.yawning_now for o in outs)
     assert outs[-1].snapshot.yawns == 1
 
@@ -237,7 +237,7 @@ def test_moderate_real_world_yawn_is_detected():
 def test_eyes_closing_during_a_yawn_is_not_counted_as_drowsy_eye_closure():
     # Real run: eyes shut for ~2.3 s during a yawn pushed the state to HIGH.
     b = calibrated().alert(3)
-    b.segment(0.4, mar=0.6).segment(2.5, mar=0.7, ear=0.08).segment(0.4, mar=0.6).alert(5)
+    b.segment(0.4, mar=0.6).segment(3.0, mar=0.7, ear=0.08).segment(0.4, mar=0.6).alert(5)
     outs = run_stream(b.frames)
     assert max_state(outs).risk_rank <= 1
     assert all(o.snapshot.long_closures == 0 for o in outs)
@@ -262,3 +262,31 @@ def test_briefly_hiding_the_face_does_not_revive_cleared_history():
     after = [o.decision.state for o in outs if o.decision.timestamp_s >= t0]
     assert all(st.risk_rank == 0 for st in after), set(after)
     assert after[-1] == DriverState.ALERT
+
+
+
+def test_yawn_held_3_seconds_raises_a_warning_and_clears_after():
+    b = calibrated().alert(3).segment(3.6, mar=0.6)
+    t_yawn_end = b.t
+    outs = run_stream(b.alert(15).frames)
+    warn = [o for o in outs if o.decision.state == DriverState.DROWSINESS_WARNING]
+    assert warn, "a 3+ s yawn must raise a warning"
+    assert warn[0].alert is not None and warn[0].alert.severity == 1
+    assert "frequent_yawning" in {e.code for e in warn[0].risk.active_evidence}
+    assert max_state(outs) == DriverState.DROWSINESS_WARNING  # never more than a warning
+    assert _seconds_to_alert(outs, t_yawn_end) < 12
+    assert outs[-1].decision.state == DriverState.ALERT
+
+
+def test_mouth_open_2_seconds_does_not_alert():
+    outs = run_stream(calibrated().alert(3).segment(2.0, mar=0.6).alert(5).frames)
+    assert max_state(outs).risk_rank == 0
+
+
+
+def test_yawn_warning_appears_3_seconds_after_mouth_opens():
+    b = calibrated().alert(3)
+    t_open = b.t
+    outs = run_stream(b.segment(4.0, mar=0.6).alert(3).frames)
+    first = next(o for o in outs if o.decision.state == DriverState.DROWSINESS_WARNING)
+    assert first.decision.timestamp_s - t_open == pytest.approx(3.0, abs=0.1)

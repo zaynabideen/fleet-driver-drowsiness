@@ -88,9 +88,10 @@ mouth:
   yawn_mar: 0.4
   # jawOpen blendshape score that independently indicates a wide opening.
   yawn_blendshape: 0.45
-  # A wide opening must last this long to be a yawn. Talking and laughing produce short openings (<
-  # ~1 s); yawns typically last several seconds.
-  min_yawn_s: 1.5
+  # Mouth held wide open this long = a yawn. With the 0.5 s warning confirmation
+  # (state_machine.escalate_confirm_s), the DROWSINESS_WARNING appears 3 s after the mouth opens.
+  # Talking and laughing produce short openings (< ~1 s); a real yawn is held for several seconds.
+  min_yawn_s: 2.5
   # Eyes often close during a yawn, so eye closure is not counted as drowsiness evidence while a
   # yawn is in progress - but only for this long. A mouth hanging open for longer (e.g. asleep with
   # the head back) gets no such exemption.
@@ -145,8 +146,9 @@ risk:
   # Sustained head-down time *while eyes are not confirmed open*. Head down with eyes open is a
   # dashboard glance (distraction), not drowsiness.
   head_down_s: [2.0, 4.0, 1.0e9]
-  # Yawns in the yawn window. Yawning alone never exceeds severity 1.
-  yawns: [2, 1.0e9, 1.0e9]
+  # Yawns in the yawn window. A single yawn (mouth open >= min_yawn_s) raises a DROWSINESS_WARNING;
+  # yawning alone never goes beyond that.
+  yawns: [1, 1.0e9, 1.0e9]
   # Blinks per minute. Excess blinking alone never exceeds severity 1.
   blink_rate: [30.0, 1.0e9, 1.0e9]
   # Window-based (history) evidence - PERCLOS, counts of long closures, slow blinks, nods, yawns,

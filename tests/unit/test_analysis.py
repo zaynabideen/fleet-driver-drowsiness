@@ -199,12 +199,12 @@ def _yawns(builder):
 
 
 def test_long_wide_opening_is_a_yawn():
-    m = _yawns(StreamBuilder().segment(1).segment(3.0, mar=0.75).segment(1))
+    m = _yawns(StreamBuilder().segment(1).segment(3.5, mar=0.75).segment(1))
     assert m.yawns == 1 and not m.yawning_now
 
 
 def test_yawning_now_flag_during_yawn():
-    m = _yawns(StreamBuilder().segment(1).segment(2.5, mar=0.75))
+    m = _yawns(StreamBuilder().segment(1).segment(3.5, mar=0.75))
     assert m.yawning_now and m.yawns == 1
 
 
@@ -223,7 +223,7 @@ def test_laughing_short_wide_openings_not_yawns():
 
 
 def test_brief_closure_inside_yawn_is_merged():
-    m = _yawns(StreamBuilder().segment(1).segment(1.2, mar=0.75).segment(0.2).segment(1.2, mar=0.75).segment(1))
+    m = _yawns(StreamBuilder().segment(1).segment(1.8, mar=0.75).segment(0.2).segment(1.8, mar=0.75).segment(1))
     assert m.yawns == 1
 
 
@@ -320,3 +320,9 @@ def test_head_coming_back_up_is_not_a_nod():
 def test_one_drop_is_one_nod_even_when_it_hovers_near_reset():
     m = _head([(0, 0, 1), (0, 22, 0.3), (22, 4, 0.3), (4, 5, 1.0)], eyes=EyeState.CLOSED)
     assert m.nods == 1
+
+
+
+def test_mouth_open_2s_is_not_a_yawn():
+    m = _yawns(StreamBuilder().segment(1).segment(2.0, mar=0.75).segment(1))
+    assert m.yawns == 0
