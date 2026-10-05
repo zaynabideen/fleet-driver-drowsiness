@@ -143,6 +143,13 @@ risk:
   yawns: [2, 1.0e9, 1.0e9]
   # Blinks per minute. Excess blinking alone never exceeds severity 1.
   blink_rate: [30.0, 1.0e9, 1.0e9]
+  # Window-based (history) evidence - PERCLOS, counts of long closures, slow blinks, nods, yawns,
+  # blink rate - keeps raising risk only until the driver has been OBSERVED alert (eyes visibly
+  # open, head up, no yawning) for this long. Without this, a minute-old episode held HIGH for ~60 s
+  # after the driver recovered, and two yawns held WARNING for ~5 min. History still counts as soon
+  # as a new sign appears, so repeated episodes still escalate. Time the eyes are unobservable never
+  # counts as alert.
+  history_relevance_s: 8.0
   # Eye closure of at least this long *combined with* the head down/dropping is CRITICAL.
   critical_combo_closure_s: 2.0
   # Three independent signal categories (eyes, head, mouth/blink) all at severity >= 1 also make
@@ -159,9 +166,9 @@ state_machine:
   # Lower risk must persist this long before stepping down ONE level from the given state. Fast to
   # escalate, slow to recover.
   deescalate_hold_s:
-    CRITICAL_SLEEP_RISK: 5.0
-    HIGH_DROWSINESS_RISK: 8.0
-    DROWSINESS_WARNING: 10.0
+    CRITICAL_SLEEP_RISK: 4.0
+    HIGH_DROWSINESS_RISK: 6.0
+    DROWSINESS_WARNING: 6.0
   # After UNKNOWN / CAMERA_UNAVAILABLE / MONITORING, low risk must be observed this long before
   # reporting ALERT.
   recovery_confirm_s: 2.0

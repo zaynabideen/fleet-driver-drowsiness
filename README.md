@@ -9,7 +9,7 @@ An explainable, safety-oriented driver monitoring system for driver-facing fleet
 ALERT · MONITORING · DROWSINESS_WARNING · HIGH_DROWSINESS_RISK · CRITICAL_SLEEP_RISK · UNKNOWN · CAMERA_UNAVAILABLE
 ```
 
-**Status:** 153 tests pass (unit, scenario and pipeline integration), plus 2 that run once the MediaPipe model is downloaded. **No real-world accuracy is claimed.** The evaluation framework is built; numbers need labelled video ([docs/EVALUATION.md](docs/EVALUATION.md)).
+**Status:** 164 tests pass (unit, scenario and pipeline integration), plus 2 that run once the MediaPipe model is downloaded. **No real-world accuracy is claimed.** The evaluation framework is built; numbers need labelled video ([docs/EVALUATION.md](docs/EVALUATION.md)).
 
 ---
 
@@ -193,7 +193,8 @@ Rules of thumb built into the engine:
 | Behaviour | Rule |
 |---|---|
 | Escalation | Target level must persist: WARNING 0.5 s, HIGH 0.3 s, CRITICAL immediate (its rule already contains seconds of evidence). Levels can be skipped. |
-| De-escalation | Lower risk must persist for 5 s (from CRITICAL), 8 s (HIGH) or 10 s (WARNING). Then the state steps down **one** level and the timer restarts. |
+| De-escalation | Lower risk must persist for 4 s (from CRITICAL) or 6 s (HIGH, WARNING). Then the state steps down **one** level and the timer restarts. The panel shows recovery progress. |
+| History vs. now | Window evidence (PERCLOS, closure/nod/yawn counts) escalates, but stops holding an alarm once the driver has been **observed** alert for 8 s; any new sign re-activates it. Time with eyes unobservable never counts as recovery. |
 | ALERT | Only when calibrated, eyes observed, and low risk confirmed for 2 s. Otherwise MONITORING. |
 | Face lost < 1 s | Hold state; confidence decays. |
 | Face lost ≥ 1 s | `UNKNOWN` (never ALERT). |
@@ -247,7 +248,7 @@ Options:
 ## 12. Testing
 
 ```bash
-pytest                                     # 153 tests, ~15 s, no camera or model needed
+pytest                                     # 164 tests, ~15 s, no camera or model needed
 python scripts/run_synthetic_scenarios.py  # readable table of scenario outcomes
 ```
 

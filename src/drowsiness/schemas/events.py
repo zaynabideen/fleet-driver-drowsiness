@@ -59,6 +59,7 @@ class StateDecision:
     confidence: float
     risk: RiskAssessment | None
     reason: str
+    recovery_progress: float | None = None  # 0..1 while counting down to the next lower level
 
     @property
     def duration_s(self) -> float:

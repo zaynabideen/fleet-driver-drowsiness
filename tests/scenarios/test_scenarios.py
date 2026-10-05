@@ -173,3 +173,49 @@ def test_recovery_after_critical_is_gradual():
             seq.append(s)
     i = seq.index("CRITICAL_SLEEP_RISK")
     assert seq[i:] == ["CRITICAL_SLEEP_RISK", "HIGH_DROWSINESS_RISK", "DROWSINESS_WARNING", "MONITORING", "ALERT"]
+
+
+# ------------------------------------------------------------- recovery (regression: alarm stuck after driver recovered)
+
+def _seconds_to_alert(outs, normal_from):
+    for o in outs:
+        if o.decision.timestamp_s >= normal_from and o.decision.state == DriverState.ALERT:
+            return o.decision.timestamp_s - normal_from
+    return None
+
+
+def test_returns_to_alert_promptly_after_repeated_episodes():
+    b = calibrated().alert(3)
+    for _ in range(3):
+        b.eyes_closed(0.3, pitch=0, pitch_to=25).eyes_closed(2.2, pitch=25).alert(3)
+    t0 = b.t
+    outs = run_stream(b.alert(60).frames)
+    assert max_state(outs) == DriverState.CRITICAL_SLEEP_RISK
+    took = _seconds_to_alert(outs, t0)
+    assert took is not None and took < 30, took  # was ~69 s before the fix
+
+
+def test_two_yawns_do_not_hold_warning_for_minutes():
+    b = calibrated().alert(3).segment(4, mar=0.8).alert(5).segment(4, mar=0.8).alert(3).eyes_closed(2.2).alert(1)
+    t0 = b.t
+    outs = run_stream(b.alert(60).frames)
+    took = _seconds_to_alert(outs, t0)
+    assert took is not None and took < 30, took  # was ~5 minutes before the fix
+
+
+def test_repeated_microsleep_pattern_still_escalates_despite_alert_gaps():
+    b = calibrated().alert(3)
+    for _ in range(3):  # 1.3 s closures separated by ~18 s of normal driving
+        b.eyes_closed(1.3).alert(18)
+    outs = run_stream(b.frames)
+    assert max_state(outs).risk_rank >= 2
+
+
+def test_unobservable_time_does_not_count_as_recovery():
+    b = calibrated().alert(3)
+    for _ in range(3):
+        b.eyes_closed(0.3, pitch=0, pitch_to=22).eyes_closed(1.0, pitch=22).alert(0.5, pitch=22, pitch_to=0).alert(2)
+    b.segment(20, quality=SUNGLASSES)  # eyes can't be seen: history must stay active
+    outs = run_stream(b.frames)
+    assert outs[-1].snapshot.observed_alert_s == 0.0
+    assert outs[-1].decision.state.risk_rank >= 1

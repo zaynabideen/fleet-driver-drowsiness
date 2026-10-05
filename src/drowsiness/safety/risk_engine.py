@@ -27,6 +27,8 @@ Step 2 - level rules (first match wins), each named in the output:
     LOW       otherwise
 
 Design choices:
+  * History (window counts, PERCLOS) escalates, but does not hold an alarm on once the
+    driver has been *observed* alert for history_relevance_s; a new sign re-activates it.
   * Weak, ambiguous signals (yawns, blink rate, slow blinks) are capped so on
     their own they can never exceed MODERATE.
   * HIGH needs either strong eye evidence or two independent categories.
@@ -51,6 +53,11 @@ from drowsiness.schemas.events import Evidence, RiskAssessment
 from drowsiness.schemas.states import ObservationStatus, RiskLevel, SignalCategory
 
 BAND_WIDTH = 0.25
+# Window-based evidence: describes the recent past, not the present.
+HISTORY_CODES = frozenset({
+    "high_perclos", "repeated_long_closures", "repeated_slow_blinks",
+    "excessive_blinking", "head_nodding", "frequent_yawning",
+})
 DISABLED = 1e8
 
 
@@ -118,7 +125,7 @@ class RuleBasedRiskEngine:
         if s.status in (ObservationStatus.CAMERA_UNAVAILABLE, ObservationStatus.FACE_LOST):
             return self._unobservable(s)
 
-        scored = self.indicators(s)
+        scored = self._retire_stale_history(self.indicators(s), s)
         evidence = tuple(e for e, _ in scored)
         max_sev = {cat: 0 for cat in SignalCategory}
         for e in evidence:
@@ -163,6 +170,21 @@ class RuleBasedRiskEngine:
             rule=rule,
             observable=True,
         )
+
+    def _retire_stale_history(self, scored: list[tuple[Evidence, float]],
+                              s: BehaviourSnapshot) -> list[tuple[Evidence, float]]:
+        """Once the driver has been observed alert for history_relevance_s, history evidence is
+        still reported but no longer sets the level. A new impairment sign makes it count again."""
+        if s.observed_alert_s < self._r.history_relevance_s:
+            return scored
+        out = []
+        for e, g in scored:
+            if e.code in HISTORY_CODES and e.severity > 0:
+                e = Evidence(e.code, e.category, 0, e.value,
+                             f"{e.description} (inactive: driver alert {s.observed_alert_s:.0f}s)")
+                g = 0.0
+            out.append((e, g))
+        return out
 
     def _unobservable(self, s: BehaviourSnapshot) -> RiskAssessment:
         if s.status == ObservationStatus.CAMERA_UNAVAILABLE:

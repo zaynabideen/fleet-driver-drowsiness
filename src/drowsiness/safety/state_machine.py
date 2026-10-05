@@ -105,7 +105,8 @@ class SafetyStateMachine:
                     self._low_since = t
                 return self._go(t, step_down, risk.confidence, risk,
                                 f"risk below {self.state.value} for {hold:.0f}s - stepping down")
-            return self._stay(t, risk, f"recovering: lower risk for {t - self._lower_since:.1f}/{hold:.0f}s")
+            return self._stay(t, risk, f"recovering: lower risk for {t - self._lower_since:.1f}/{hold:.0f}s",
+                              recovery=min(1.0, (t - self._lower_since) / hold) if hold > 0 else 1.0)
 
         # Not elevated and target is LOW.
         assert risk.level == RiskLevel.LOW
@@ -138,9 +139,9 @@ class SafetyStateMachine:
         self._confidence = conf
         return StateDecision(t, self.state, prev, changed, self._since, conf, risk, reason)
 
-    def _stay(self, t: float, risk: RiskAssessment, reason: str) -> StateDecision:
+    def _stay(self, t: float, risk: RiskAssessment, reason: str, recovery: float | None = None) -> StateDecision:
         self._confidence = risk.confidence
-        return StateDecision(t, self.state, self.state, False, self._since, risk.confidence, risk, reason)
+        return StateDecision(t, self.state, self.state, False, self._since, risk.confidence, risk, reason, recovery)
 
     def _hold(self, t: float, risk: RiskAssessment, reason: str, decay: bool = True) -> StateDecision:
         if self._hold_from is None:

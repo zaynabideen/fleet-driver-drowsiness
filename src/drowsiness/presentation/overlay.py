@@ -111,6 +111,9 @@ def render(
 
     cv2.rectangle(panel, (18, 44), (PANEL_W - 18, 84), colour, -1)
     _text(panel, d.state.value.replace("_", " "), (30, 71), 0.62, (255, 255, 255), BOLD)
+    if d.recovery_progress is not None:
+        _text(panel, f"recovering {d.recovery_progress:.0%}", (PANEL_W - 140, 70), 0.42, (255, 255, 255))
+        cv2.rectangle(panel, (18, 81), (18 + int((PANEL_W - 36) * d.recovery_progress), 84), (255, 255, 255), -1)
 
     y = 110
     risk_word = RISK_WORD[r.level.value] if r.observable else "N/A"

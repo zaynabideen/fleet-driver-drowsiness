@@ -37,6 +37,7 @@ class TemporalAnalyzer:
         self._last_impaired_s: float | None = None
         self._unobserved_since: float | None = None
         self._lost_while_impaired = False
+        self._alert_since: float | None = None
         self.last_eye: EyeObservation | None = None
 
     def update(self, f: FrameFeatures) -> BehaviourSnapshot:
@@ -66,6 +67,17 @@ class TemporalAnalyzer:
         if impaired_now:
             self._last_impaired_s = t
         self._track_unobserved_after_impairment(t, eye.state)
+
+        # Observed-alert stretch: eyes seen (open, or a normal short blink), no impairment sign.
+        rapid_blinking = (eye.state == EyeState.CLOSED and blink.blink_rate_per_min is not None
+                          and blink.blink_rate_per_min >= self._s.risk.blink_rate[0])
+        breaks_alert = (impaired_now or yawn.yawning_now or eye.state == EyeState.UNOBSERVABLE
+                        or head.last_nod_s == t or rapid_blinking)
+        if breaks_alert:
+            self._alert_since = None
+        elif self._alert_since is None:
+            self._alert_since = t
+        observed_alert_s = 0.0 if self._alert_since is None else t - self._alert_since
 
         if not f.camera_ok:
             status = ObservationStatus.CAMERA_UNAVAILABLE
@@ -112,6 +124,7 @@ class TemporalAnalyzer:
             lost_while_impaired=self._lost_while_impaired,
             camera_unavailable_s=0.0 if self._camera_down_since is None else t - self._camera_down_since,
             camera_issue=f.camera_issue,
+            observed_alert_s=observed_alert_s,
         )
 
     def _track_unobserved_after_impairment(self, t: float, eye_state: EyeState) -> None:

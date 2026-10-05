@@ -52,6 +52,10 @@ class BehaviourSnapshot:
     camera_unavailable_s: float
     camera_issue: str | None
 
+    # How long the driver has been continuously OBSERVED alert (eyes visibly open, no impairment sign).
+    # Used to retire stale history evidence; unobservable time never counts.
+    observed_alert_s: float = 0.0
+
     def to_dict(self) -> dict[str, Any]:
         data = asdict(self)
         data["status"] = self.status.value

@@ -254,6 +254,15 @@ class RiskSettings(_Section):
     blink_rate: tuple[float, float, float] = Field(
         (30.0, 1e9, 1e9), description="Blinks per minute. Excess blinking alone never exceeds severity 1."
     )
+    history_relevance_s: float = Field(
+        8.0,
+        gt=0,
+        description="Window-based (history) evidence - PERCLOS, counts of long closures, slow blinks, nods, yawns, "
+        "blink rate - keeps raising risk only until the driver has been OBSERVED alert (eyes visibly open, head "
+        "up, no yawning) for this long. Without this, a minute-old episode held HIGH for ~60 s after the driver "
+        "recovered, and two yawns held WARNING for ~5 min. History still counts as soon as a new sign appears, "
+        "so repeated episodes still escalate. Time the eyes are unobservable never counts as alert.",
+    )
     critical_combo_closure_s: float = Field(
         2.0,
         description="Eye closure of at least this long *combined with* the head down/dropping is CRITICAL.",
@@ -277,9 +286,9 @@ class StateMachineSettings(_Section):
     )
     deescalate_hold_s: dict[str, float] = Field(
         default_factory=lambda: {
-            "CRITICAL_SLEEP_RISK": 5.0,
-            "HIGH_DROWSINESS_RISK": 8.0,
-            "DROWSINESS_WARNING": 10.0,
+            "CRITICAL_SLEEP_RISK": 4.0,
+            "HIGH_DROWSINESS_RISK": 6.0,
+            "DROWSINESS_WARNING": 6.0,
         },
         description="Lower risk must persist this long before stepping down ONE level from the given state. "
         "Fast to escalate, slow to recover.",

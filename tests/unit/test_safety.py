@@ -111,6 +111,20 @@ def test_corroboration_raises_confidence():
     assert multi.confidence > single.confidence
 
 
+def test_history_evidence_retires_once_driver_observed_alert():
+    fresh = assess(long_closures=3, nods=3, yawns=2, observed_alert_s=2.0)
+    assert fresh.level == RiskLevel.HIGH
+    stale = assess(long_closures=3, nods=3, yawns=2, observed_alert_s=S.risk.history_relevance_s + 1)
+    assert stale.level == RiskLevel.LOW
+    assert all(e.severity == 0 for e in stale.evidence)
+    assert any("inactive: driver alert" in e.description for e in stale.evidence)
+
+
+def test_acute_evidence_never_retired():
+    r = assess(current_closure_s=2.5, eye_state=EyeState.CLOSED, observed_alert_s=60.0)
+    assert r.level == RiskLevel.HIGH
+
+
 def test_unobservable_is_not_low_risk_with_confidence():
     r = assess(status=ObservationStatus.FACE_LOST, face_lost_s=3.0)
     assert not r.observable
@@ -181,18 +195,20 @@ def test_critical_is_immediate_and_can_skip_levels():
 
 
 def test_deescalation_is_stepwise_and_slow():
+    hold = S.state_machine.deescalate_hold_s
     sm = SafetyStateMachine(S)
     drive(sm, [(3, {}), (0.1, {"current_closure_s": 3.2})])
     assert sm.state == DriverState.CRITICAL_SLEEP_RISK
-    d = drive(sm, [(4.5, {})])
-    assert d[-1].state == DriverState.CRITICAL_SLEEP_RISK  # 5 s hold not yet met
+    d = drive(sm, [(hold["CRITICAL_SLEEP_RISK"] - 0.5, {})])
+    assert d[-1].state == DriverState.CRITICAL_SLEEP_RISK  # hold not yet met
+    assert 0 < d[-1].recovery_progress < 1                 # progress shown while recovering
     d = drive(sm, [(1.0, {})])
     assert d[-1].state == DriverState.HIGH_DROWSINESS_RISK  # one step only
-    d = drive(sm, [(8.5, {})])
+    d = drive(sm, [(hold["HIGH_DROWSINESS_RISK"] + 0.5, {})])
     assert d[-1].state == DriverState.DROWSINESS_WARNING
-    d = drive(sm, [(10.5, {})])
+    d = drive(sm, [(hold["DROWSINESS_WARNING"] + 0.5, {})])
     assert d[-1].state == DriverState.MONITORING
-    d = drive(sm, [(2.5, {})])
+    d = drive(sm, [(S.state_machine.recovery_confirm_s + 0.5, {})])
     assert d[-1].state == DriverState.ALERT
 
 
