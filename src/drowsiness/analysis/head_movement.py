@@ -3,8 +3,9 @@
 All angles are relative to the driver's calibrated neutral; positive pitch = chin down.
 
 Nod: pitch rises by >= nod_drop_deg within nod_max_fall_s (a fast, involuntary
-drop). Another nod is only counted after the head returns within nod_reset_deg
-of neutral, so one long drop is one nod, not thirty.
+drop) AND ends at least nod_drop_deg below neutral. Lifting the head back up from
+looking up is fast too, but is not a nod. Another nod is only counted after the
+head returns within nod_reset_deg of neutral, so one drop is one nod.
 
 Head-down is split by what the eyes are doing:
   * eyes NOT confirmed open (closed / unobservable)  -> head_down_s   (drowsiness evidence)
@@ -75,16 +76,28 @@ class HeadMovementAnalyzer:
         )
 
     def _detect_nod(self, t: float, pitch: float) -> None:
+        """A nod = the head DROPS fast and ENDS UP DOWN.
+
+        * rise of >= nod_drop_deg within nod_max_fall_s (fast, involuntary), and
+        * the head ends at least nod_drop_deg below neutral (raising the head back up from
+          looking up/back also rises fast, but is not a nod), and
+        * one nod per drop: after counting, the history is cleared and the detector only
+          re-arms once the head is back near neutral.
+        """
         self._history.append((t, pitch))
         while self._history and self._history[0][0] < t - self._s.nod_max_fall_s:
             self._history.popleft()
-        if not self._armed and pitch <= self._s.nod_reset_deg:
-            self._armed = True
-        if self._armed:
-            lowest = min(p for _, p in self._history)
-            if pitch - lowest >= self._s.nod_drop_deg:
-                self._nods.append(t)
-                self._armed = False
+        if not self._armed:
+            if pitch <= self._s.nod_reset_deg:
+                self._armed = True
+                self._history.clear()
+                self._history.append((t, pitch))
+            return
+        lowest = min(p for _, p in self._history)
+        if pitch - lowest >= self._s.nod_drop_deg and pitch >= self._s.nod_drop_deg:
+            self._nods.append(t)
+            self._armed = False
+            self._history.clear()
 
     def _last_nod(self) -> float | None:
         return self._nods[-1] if self._nods else None

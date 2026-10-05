@@ -308,3 +308,15 @@ def test_sunglasses_degrade_but_head_still_tracked():
     assert snaps[-1].status == ObservationStatus.DEGRADED
     assert snaps[-1].rel_pitch_deg == pytest.approx(5.0)
     assert snaps[-1].observation_confidence < 0.5
+
+
+def test_head_coming_back_up_is_not_a_nod():
+    """Regression from a real webcam run: lifting the head from looking UP back to neutral
+    (pitch -20 -> 0) was counted as 9 nods in half a second."""
+    m = _head([(0, 0, 1), (0, -20, 1.0), (-20, -20, 1), (-20, 1, 0.4), (1, 1, 2)], eyes=EyeState.OPEN)
+    assert m.nods == 0
+
+
+def test_one_drop_is_one_nod_even_when_it_hovers_near_reset():
+    m = _head([(0, 0, 1), (0, 22, 0.3), (22, 4, 0.3), (4, 5, 1.0)], eyes=EyeState.CLOSED)
+    assert m.nods == 1

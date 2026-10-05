@@ -29,8 +29,9 @@ STEPS: tuple[DemoStep, ...] = (
     DemoStep("Open your eyes, sit normally", 4, ""),
     DemoStep("Close your eyes AND drop your head", 6, "Closure + head drop -> CRITICAL"),
     DemoStep("Sit up, eyes open", 4, ""),
-    DemoStep("Cover the camera with your hand", 5, "No image -> CAMERA UNAVAILABLE, never 'safe'"),
-    DemoStep("Uncover the camera", 3, ""),
+    DemoStep("Cover your face with your hand", 4, "Driver not visible -> UNKNOWN, never 'safe'"),
+    DemoStep("Press your palm flat over the camera LENS", 5, "No image -> CAMERA UNAVAILABLE"),
+    DemoStep("Uncover the camera, sit normally", 4, "Recovers only after seeing you alert again"),
 )
 CALIBRATION_PROMPT = "Calibrating: look at the screen normally"
 MAX_CALIBRATION_S = 45.0  # don't wait forever (e.g. sunglasses); continue the script anyway
